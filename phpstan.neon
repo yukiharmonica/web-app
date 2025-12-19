@@ -1,0 +1,22 @@
+includes:
+    - vendor/larastan/larastan/extension.neon
+
+parameters:
+    paths:
+        - app/
+        - bootstrap/
+        - config/
+        - database/
+        - routes/
+        - tests/
+
+    # レベル設定 (0:緩い 〜 9:厳しい)
+    # 最初は 5 くらいから始めるのがおすすめです
+    level: 5
+
+    # 無視するエラーなどをここに記述
+    # ignoreErrors:
+    #     - '#PHPDoc tag @var#'
+    #
+    # excludePaths:
+    #     - ./*/*/FileToBeExcluded.php
