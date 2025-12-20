@@ -2,35 +2,56 @@
     "name": "AI Diary App (Laravel)",
 
     // 親階層にある docker-compose.yml を参照
-    "dockerComposeFile": ["../../infrastructure/docker-compose.yml"],
+    // web-app/.devcontainer/ から見て ../../infrastructure/docker-compose.yml
+    "dockerComposeFile": [
+        "../../infrastructure/docker-compose.yml"
+    ],
 
     // 接続するサービス名（docker-compose.yml 内の service 名）
     "service": "app",
 
     // コンテナ内でVSCodeが開くディレクトリ
     "workspaceFolder": "/var/www/html",
-
     // VSCodeを閉じてもコンテナを停止しない設定（サーバーとして動かし続けるため）
     "shutdownAction": "none",
 
     // コンテナ内のユーザー（Dockerfileで設定した www-data: UID 1000 を使用）
     "remoteUser": "www-data",
 
-    // コンテナ作成後に実行するコマンド（必要に応じて有効化）
-    // "postCreateCommand": "composer install && npm install",
-
     // VSCodeの拡張機能と設定
     "customizations": {
         "vscode": {
             "extensions": [
-                "bmewburn.vscode-intelephense-client", // PHP IntelliSense
+                "bmewburn.vscode-intelephense-client",       // PHP IntelliSense
                 "amiralizadeh9480.laravel-extra-intellisense", // Laravel補完
-                "onecentlin.laravel-blade", // Bladeテンプレート用
-                "esbenp.prettier-vscode", // フォーマッター
-                "dbaeumer.vscode-eslint" // JS/TSリント
+                "onecentlin.laravel-blade",                  // Bladeテンプレート用
+                "open-southeners.laravel-pint",              // Laravel Pint統合
+                "swordev.phpstan",                           // PHPStan静的解析
+                "esbenp.prettier-vscode",                    // フォーマッター
+                "dbaeumer.vscode-eslint",                    // JS/TSリント
+                "bradlc.vscode-tailwindcss"                  // Tailwind CSS補完
             ],
             "settings": {
-                "php.validate.executablePath": "/usr/local/bin/php"
+                "php.validate.executablePath": "/usr/local/bin/php",
+                "editor.formatOnSave": true,
+                "editor.defaultFormatter": "esbenp.prettier-vscode",
+                "[php]": {
+                    "editor.defaultFormatter": "open-southeners.laravel-pint"
+                },
+                "files.associations": {
+                    "*.blade.php": "blade"
+                },
+                "emmet.includeLanguages": {
+                    "blade": "html"
+                },
+                "tailwindCSS.includeLanguages": {
+                    "blade": "html"
+                },
+                "tailwindCSS.experimental.classRegex": [
+                    ["class:\\s*'([^']*)'"]
+                ],
+                "phpstan.enabled": true,
+                "phpstan.configFile": "./phpstan.neon"
             }
         }
     }

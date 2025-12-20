@@ -1,44 +1,74 @@
-# Laravel 12 + Livewire 3 + Volt Project
+# AI Diary - Laravel 12 + Livewire 3 + Volt Project
 
 ## Architecture Overview
 
-This is a **Laravel 12** application using **Livewire 3** with **Volt** (single-file components), **Breeze** for authentication, and **Tailwind CSS 3** for styling.
+**AI Diary** is a Laravel 12 application using **Livewire 3** with **Volt** (single-file components), **Breeze** for authentication, and **Tailwind CSS 3** for styling. The project uses a **monorepo structure** with separate infrastructure and application directories.
+
+### Project Structure
+
+```
+/home/ubuntu/aiDiary/
+├── infrastructure/        # Docker infrastructure (shared services)
+│   ├── docker-compose.yml # Production services: app, nginx, db, redis, queue
+│   ├── Dockerfile         # PHP 8.3-FPM Alpine with extensions
+│   └── nginx/             # Nginx configuration
+└── web-app/              # Laravel application
+    ├── docker-compose.yml # Local dev services: mysql, redis, mailpit
+    └── .devcontainer/     # Dev Container for VS Code
+```
 
 ### Key Stack Components
 
-- **Backend**: Laravel 12 (PHP 8.2+)
+- **Backend**: Laravel 12 (PHP 8.2+, deployed with PHP 8.3-FPM Alpine)
 - **Frontend**: Livewire 3 + Volt, Tailwind CSS 3, Vite 7
 - **Auth**: Laravel Breeze with Volt-powered auth pages
-- **Database**: Configured via `config/database.php` (typically SQLite/MySQL)
+- **Database**: MySQL 8.0 (production), SQLite/MySQL (local dev)
+- **Cache/Queue**: Redis 7
+- **Deployment**: Docker Compose with separate infrastructure layer
 
 ## Development Workflow
 
-### Start Development Environment
+### Two Deployment Modes
+
+**Local Dev (Simple)**: Use `web-app/docker-compose.yml` for local services only:
 
 ```bash
-composer dev  # Runs server, queue, logs (pail), and vite concurrently
+cd web-app
+docker compose up -d        # MySQL, Redis, Mailpit only
+composer dev                # Runs: server, queue, pail, vite concurrently
 ```
 
-This single command starts:
-
-- PHP dev server (`:8000`)
-- Queue listener
-- Laravel Pail (real-time logs)
-- Vite dev server (HMR)
-
-### Alternative Individual Commands
+**Production/Full Docker**: Use `infrastructure/docker-compose.yml` for complete containerized environment:
 
 ```bash
+cd infrastructure
+docker-compose up -d        # app, nginx, db, redis, queue containers
+docker-compose exec app php artisan migrate
+```
+
+See [../infrastructure/.github/copilot-instructions.md](../../infrastructure/.github/copilot-instructions.md) for full Docker workflow.
+
+### Dev Container (VS Code)
+
+Open `web-app` in VS Code with Dev Containers extension:
+
+- Auto-connects to `infrastructure/docker-compose.yml` → `app` service
+- Workspace: `/var/www/html` (mounted from `web-app/`)
+- User: `www-data` (UID 1000)
+- Pre-installed extensions: Intelephense, Laravel, Blade, Pint, PHPStan, Tailwind
+
+Configuration: [.devcontainer/devcontainer.json](.devcontainer/devcontainer.json)
+
+### Key Commands
+
+```bash
+composer dev                # Local dev: server:8000, queue, logs, vite (HMR)
+composer setup              # Initial setup: install, key:generate, migrate, build
+composer test               # Run tests (clears config first)
 php artisan serve           # Start server only
-npm run dev                # Vite dev server only
-php artisan test           # Run PHPUnit tests
-composer test              # Clear config + run tests
-```
-
-### Initial Setup
-
-```bash
-composer setup  # Install deps, generate key, migrate, build assets
+npm run dev                 # Vite HMR only
+php artisan migrate         # Database migrations
+php artisan pail            # Real-time logs
 ```
 
 ## Livewire + Volt Patterns
@@ -86,6 +116,17 @@ For reusable logic, use separate PHP classes:
 ```blade
 <livewire:profile.update-password-form />  <!-- Class-based or registered Volt -->
 ```
+
+### Livewire Wire Directives
+
+Common patterns used throughout the app:
+
+- `wire:model="property"` - Two-way data binding
+- `wire:submit="method"` - Form submission
+- `wire:click="method"` - Click handler
+- `wire:navigate` - SPA-style navigation (preserves state)
+
+**Example from auth forms**: `wire:submit="login"` + `wire:model="form.email"`
 
 ## Routing Conventions
 
@@ -186,29 +227,23 @@ Configuration in [phpstan.neon](../phpstan.neon):
 
 **lint-staged** configuration in [.lintstagedrc.json](../.lintstagedrc.json):
 
-- PHP files: Auto-format with Pint + PHPStan analysis
+- PHP files: Auto-format with Pint
 - JS/TS files: Prettier + ESLint
 - Other files: Prettier formatting
 
-Setup with Husky:
+Setup with Husky (already configured):
 
 ```bash
-npm install --save-dev husky lint-staged
-npx husky init
-echo "npx lint-staged" > .husky/pre-commit
+npm install  # Installs Husky hooks automatically via "prepare" script
 ```
 
-- PHP files: Auto-format with Pint + PHPStan analysis
-- JS/TS files: Prettier + ESLint
-- Other files: Prettier formatting
+### ESLint Configuration
 
-Setup with Husky:
+[eslint.config.js](../eslint.config.js) uses flat config format (ESLint 9+):
 
-```bash
-npm install --save-dev husky lint-staged
-npx husky init
-echo "npx lint-staged" > .husky/pre-commit
-```
+- ECMAScript latest with module support
+- Prettier integration for consistent formatting
+- Ignores: `node_modules`, `vendor`, `public/build`, `storage`, `bootstrap/cache`
 
 ## CI/CD
 
@@ -222,13 +257,13 @@ echo "npx lint-staged" > .husky/pre-commit
 
 ## Local Development Services
 
-### Docker Compose
+### Docker Compose (Local Dev)
 
-[docker-compose.yml](../docker-compose.yml) provides:
+[docker-compose.yml](../docker-compose.yml) provides lightweight services for local development:
 
-- MySQL 8.0 (`:3306`)
-- Redis (`:6379`)
-- Mailpit for email testing (`:1025` SMTP, `:8025` Web UI)
+- **MySQL 8.0** (`:3306`) - `laravel` database
+- **Redis 7** (`:6379`) - Cache and queue backend
+- **Mailpit** (`:1025` SMTP, `:8025` Web UI) - Email testing
 
 Start services:
 
@@ -236,7 +271,7 @@ Start services:
 docker compose up -d
 ```
 
-Update `.env` to use these services:
+Connect Laravel to these services in `.env`:
 
 ```env
 DB_CONNECTION=mysql
@@ -246,9 +281,12 @@ DB_USERNAME=laravel
 DB_PASSWORD=password
 
 REDIS_HOST=127.0.0.1
+
 MAIL_HOST=127.0.0.1
 MAIL_PORT=1025
 ```
+
+**Note**: For full containerized deployment with nginx and queue workers, use `infrastructure/docker-compose.yml` instead.
 
 ## Key Files Reference
 
